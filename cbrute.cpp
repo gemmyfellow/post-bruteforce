@@ -19,10 +19,12 @@ std::string found_pass = "";
 std::string target = "";
 std::string url = "";
 int i = 0;
-std::mutex mtx;
+std::mutex file_mtx;
 std::vector<std::string> passwords;
 
 void write_line(const std::string& file_path, const std::string& line) {
+    std::lock_guard<std::mutex> guard(file_mtx);
+    
     std::vector<std::string> encodings = { "utf-8", "latin-1", "iso-8859-1", "cp1252" };
 
     for (const auto& encoding : encodings) {
@@ -143,7 +145,7 @@ void status_report() {
     while (!found) {
         std::this_thread::sleep_for(std::chrono::seconds(1)); 
 
-        std::lock_guard<std::mutex> lock(mtx);
+        std::lock_guard<std::mutex> lock(file_mtx);
         if (i % 1000 == 0 && i != 0) {
             auto elapsed_time = std::chrono::high_resolution_clock::now() - start_time;
             double elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(elapsed_time).count();
@@ -156,6 +158,16 @@ void status_report() {
 
 }
 
+void brute_force(){
+
+    while (!found){
+        for (int i = 0; i < 10000; ++i) {
+            if (found)
+                break;
+            advanced_cracking();
+        }
+    }
+}
 
 int main(int argc, char* argv[]) {
     std::thread status_thread(status_report);
@@ -173,14 +185,11 @@ int main(int argc, char* argv[]) {
         return 0;
     }
     std::cout << "Initiating bruteforce against " << target << " on " << url << "\n";
-    while (!found) {
-        for (int i = 0; i < 100000; ++i) {
-            std::thread y(advanced_cracking);
-            y.join();
-
-
-        }
+    for (int i =0 ; i< 15; i++){
+        std::thread t(brute_force);
+        t.detach();
     }
+    while (!found){}
     std::cout << found_pass;
     std::cout << found << std::endl;
 
